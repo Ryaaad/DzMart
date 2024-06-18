@@ -12,7 +12,23 @@ import (
 func Createuser(c *gin.Context) {
 	var body models.User
 	if err := c.ShouldBindJSON(&body); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		var customErr string
+
+		if body.Email == "" {
+			customErr = "Email field is required"
+		}
+
+		if body.Name == "" {
+			customErr = "Name field is required"
+		}
+		if body.Email == "" && body.Name == "" {
+			customErr = "Name & Email fields are required"
+		}
+		if customErr == "" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		} else {
+			c.JSON(http.StatusBadRequest, gin.H{"error": customErr})
+		}
 		return
 	}
 
