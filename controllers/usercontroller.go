@@ -88,10 +88,10 @@ func Updateuser(c *gin.Context) {
 		user.Name = *input.Name
 	}
 	if input.Email != nil {
-		user.Name = *input.Email
+		user.Email = *input.Email
 	}
 	if input.Password != nil {
-		user.Name = *input.Password
+		user.Password = *input.Password
 	}
 
 	updateresult := initializers.DB.Save(&user)

@@ -1,6 +1,6 @@
 package models
 
 type Category struct {
-	IDCategory uint   `gorm:"primaryKey;autoIncrement" json:"id"`
-	Name       string `gorm:"uniqueIndex;not null" json:"Name" binding:"required,min=1,max=30"`
+	CatName string    `gorm:"primaryKey;column:CatName" json:"CatName" binding:"required,min=1,max=30"`
+	Items   []Product `gorm:"foreignKey:Category" json:"Items" `
 }

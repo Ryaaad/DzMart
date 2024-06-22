@@ -14,7 +14,7 @@ func Createcategory(c *gin.Context) {
 	if err := c.ShouldBindJSON(&body); err != nil {
 		var customErr string
 
-		if body.Name == "" {
+		if body.CatName == "" {
 			customErr = "Category Name field is required"
 		}
 
@@ -27,7 +27,7 @@ func Createcategory(c *gin.Context) {
 	}
 
 	category := models.Category{
-		Name: body.Name,
+		CatName: body.CatName,
 	}
 
 	result := initializers.DB.Create(&category)
@@ -50,9 +50,9 @@ func Getcategories(c *gin.Context) {
 }
 
 func Findcategory(c *gin.Context) {
-	Name := c.Param("Name")
+	CatName := c.Param("name")
 	var category models.Category
-	result := initializers.DB.Where("name = ?", Name).First(&category)
+	result := initializers.DB.Where("CatName = ?", CatName).First(&category)
 	if result.Error != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "category not found"})
 		return
@@ -62,9 +62,9 @@ func Findcategory(c *gin.Context) {
 }
 
 func Updatecategory(c *gin.Context) {
-	Name := c.Param("Name")
+	CatName := c.Param("name")
 	var category models.Category
-	result := initializers.DB.Where("name = ?", Name).First(&category)
+	result := initializers.DB.Where("CatName = ?", CatName).First(&category)
 	if result.Error != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Category not found"})
 		return
@@ -75,7 +75,7 @@ func Updatecategory(c *gin.Context) {
 		return
 	}
 
-	category.Name = *input.Name
+	category.CatName = *input.CatName
 
 	updateresult := initializers.DB.Save(&category)
 	if updateresult.Error != nil {
@@ -86,9 +86,9 @@ func Updatecategory(c *gin.Context) {
 }
 
 func Deletecategory(c *gin.Context) {
-	Name := c.Param("Name")
+	CatName := c.Param("name")
 	var category models.Category
-	result := initializers.DB.Where("name = ?", Name).First(&category)
+	result := initializers.DB.Where("CatName = ?", CatName).First(&category)
 	if result.Error != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Category not found"})
 		return

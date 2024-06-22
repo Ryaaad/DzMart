@@ -1,5 +1,5 @@
 package dtos
 
 type UpdateCategory struct {
-	Name *string `json:"name" binding:"required"`
+	CatName *string `json:"CatName" binding:"required"`
 }
