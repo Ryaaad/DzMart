@@ -83,6 +83,18 @@ func Findproduct(c *gin.Context) {
 	})
 }
 
+func GetproductCategory(c *gin.Context) {
+	Category := c.Param("category")
+	var product []models.Product
+	result := initializers.DB.Where("category = ?", Category).First(&product)
+	if result.Error != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "no product with such category"})
+		return
+	}
+	c.JSON(200, gin.H{
+		"product": product,
+	})
+}
 func Updateproduct(c *gin.Context) {
 	Name := c.Param("name")
 	var product models.Product

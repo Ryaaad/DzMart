@@ -22,28 +22,38 @@ func init() {
 }
 func setupRouter() *gin.Engine {
 	r := gin.Default()
+
 	// user
-	r.GET("/users", controllers.Getusers)
-	r.POST("/users", controllers.Createuser)
-	r.GET("/users/:id", controllers.Finduser)
-	r.PUT("/users/:id", controllers.Updateuser)
-	r.DELETE("/users/:id", controllers.Deleteuser)
+	users := r.Group("/users")
+	{
+		users.GET("/", controllers.Getusers)
+		users.POST("/", controllers.Createuser)
+		users.GET("/:id", controllers.Finduser)
+		users.PUT("/:id", controllers.Updateuser)
+		users.DELETE("/:id", controllers.Deleteuser)
+	}
 
 	// category
-	r.GET("/categories", controllers.Getcategories)
-	r.POST("/categories", controllers.Createcategory)
-	r.GET("/categories/:name", controllers.Findcategory)
-	r.PUT("/categories/:name", controllers.Updatecategory)
-	r.DELETE("/categories/:name", controllers.Deletecategory)
-	// r.GET("/categories/:name/products", controllers.Getproducts)
-	// r.GET("/categories/:category/products/:name", controllers.Getproducts)
+	categories := r.Group("/categories")
+	{
+		categories.GET("/", controllers.Getcategories)
+		categories.POST("/", controllers.Createcategory)
+		categories.GET("/:name", controllers.Findcategory)
+		categories.PUT("/:name", controllers.Updatecategory)
+		categories.DELETE("/:name", controllers.Deletecategory)
+		// categoriesGET("/:category/products", controllers.GetproductCategory)
+		// categoriesGET("/:category/products/:name", controllers.Getproducts)
+	}
 
 	// product
-	r.GET("/products", controllers.Getproducts)
-	r.POST("/products", controllers.Addproduct)
-	r.GET("/products/:name", controllers.Findproduct)
-	r.PUT("/products/:name", controllers.Updateproduct)
-	r.DELETE("/products/:name", controllers.Deleteproduct)
+	products := r.Group("/products")
+	{
+		products.GET("/", controllers.Getproducts)
+		products.POST("/", controllers.Addproduct)
+		products.GET("/:name", controllers.Findproduct)
+		products.PUT("/:name", controllers.Updateproduct)
+		products.DELETE("/:name", controllers.Deleteproduct)
+	}
 
 	return r
 }
