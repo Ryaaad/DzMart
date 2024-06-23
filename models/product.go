@@ -9,4 +9,5 @@ type Product struct {
 	Rating      float64 `gorm:"default:0" json:"Rating" binding:"gte=0,lte=5" `
 	Qte         int     `json:"Qte" binding:"gte=0" `
 	Category    string  `json:"Category"  binding:"required"`
+	Users       []*User `gorm:"many2many:Favorite;onDelete:CASCADE"`
 }

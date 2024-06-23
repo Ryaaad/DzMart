@@ -31,6 +31,11 @@ func setupRouter() *gin.Engine {
 		users.GET("/:id", controllers.Finduser)
 		users.PUT("/:id", controllers.Updateuser)
 		users.DELETE("/:id", controllers.Deleteuser)
+
+		// Favorite products
+		users.POST(":id/Favorites", controllers.AddFavorite)
+		users.GET(":id/Favorites", controllers.GetFavorites)
+		users.DELETE(":id/Favorites/:productid", controllers.DeleteFavorite)
 	}
 
 	// category
