@@ -41,8 +41,7 @@ func setupRouter() *gin.Engine {
 		categories.GET("/:name", controllers.Findcategory)
 		categories.PUT("/:name", controllers.Updatecategory)
 		categories.DELETE("/:name", controllers.Deletecategory)
-		// categoriesGET("/:category/products", controllers.GetproductCategory)
-		// categoriesGET("/:category/products/:name", controllers.Getproducts)
+		categories.GET("/:name/products", controllers.GetproductCategory)
 	}
 
 	// product
