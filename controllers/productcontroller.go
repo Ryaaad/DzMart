@@ -40,7 +40,11 @@ func Addproduct(c *gin.Context) {
 		}
 		return
 	}
-
+	var category models.Category
+	if err := initializers.DB.First(&category, "CatName = ?", body.Category).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "category not found " + err.Error()})
+		return
+	}
 	product := models.Product{
 		Name:        body.Name,
 		Description: body.Description,
@@ -64,7 +68,7 @@ func Addproduct(c *gin.Context) {
 
 func Getproducts(c *gin.Context) {
 	var products []models.Product
-	initializers.DB.Find(&products)
+	initializers.DB.Preload("Comments").Find(&products)
 	c.JSON(200, gin.H{
 		"products": products,
 	})

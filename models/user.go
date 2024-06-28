@@ -8,4 +8,5 @@ type User struct {
 	Password string     `json:"Password" binding:"required,min=8"`
 	Sub      bool       `json:"sub" binding:"boolean" `
 	Fav      []*Product `gorm:"many2many:Favorite;onDelete:CASCADE"`
+	Comments []*Comment `gorm:"foreignKey:UserID" json:"comments"`
 }
