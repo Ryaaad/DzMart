@@ -4,7 +4,7 @@ import (
 	"DzMart/initializers"
 	"DzMart/migration"
 	"DzMart/routes"
-	"log"
+	"fmt"
 
 	"github.com/gin-gonic/gin"
 )
@@ -13,11 +13,13 @@ func init() {
 	initializers.LoadEnvVariables()
 	DBerr := initializers.ConnectToDB()
 	if DBerr != nil {
-		log.Fatal(DBerr)
+		fmt.Printf("Failed to Connect to database: %v\n", DBerr)
+		return
 	}
 	Migraterr := migration.MigrateAllTables()
 	if Migraterr != nil {
-		log.Fatal(DBerr)
+		fmt.Printf("Failed to migrate: %v\n", Migraterr)
+		return
 	}
 }
 func setupRouter() *gin.Engine {
