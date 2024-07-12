@@ -32,6 +32,19 @@ func GetCategoryByID(CatName string) (*models.Category, error) {
 	return &category, nil
 }
 
+func GetCategoryProducts(CatName string) (*models.Category, error) {
+	var category models.Category
+	result := initializers.DB.Where("CatName=?", CatName).Preload("Items").First(&category)
+	if result.Error != nil {
+		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			return nil, fmt.Errorf("category not found")
+		} else {
+			return nil, result.Error
+		}
+	}
+	return &category, nil
+}
+
 func CreateCategory(category *models.Category, img interface{}, c context.Context) error {
 	PublicID := fmt.Sprint(category.CatName, "img")
 	resp, Uploaderr := cloudinary.UploadImage(c, img, PublicID)

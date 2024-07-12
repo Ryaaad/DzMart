@@ -89,18 +89,6 @@ func Findproduct(c *gin.Context) {
 	})
 }
 
-func GetproductCategory(c *gin.Context) {
-	Category := c.Param("name")
-	var product []models.Product
-	result := initializers.DB.Where("category = ?", Category).Find(&product)
-	if result.Error != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "no product with such category"})
-		return
-	}
-	c.JSON(200, gin.H{
-		"product": product,
-	})
-}
 func Updateproduct(c *gin.Context) {
 	Name := c.Param("name")
 	var product models.Product
@@ -266,5 +254,4 @@ func DeleteProductImage(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusAccepted, gin.H{"message": "img deleted"})
-
 }

@@ -50,7 +50,7 @@ func GetCategories(c *gin.Context) {
 	})
 }
 
-func FindCategory(c *gin.Context) {
+func GetCategory(c *gin.Context) {
 	CatName := c.Param("name")
 	category, err := services.GetCategoryByID(CatName)
 	if err != nil {
@@ -111,5 +111,18 @@ func GetCategoriesImage(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, gin.H{
 		"categoriesimage": categoriesimage,
+	})
+}
+
+func GetCategoryproducts(c *gin.Context) {
+	CatName := c.Param("name")
+	Category, Result := services.GetCategoryProducts(CatName)
+	if Result != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": fmt.Sprint(Result)})
+		return
+	}
+
+	c.JSON(200, gin.H{
+		"products": Category.Items,
 	})
 }
