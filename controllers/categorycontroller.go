@@ -1,38 +1,36 @@
 package controllers
 
 import (
-	"DzMart/dtos"
-	"DzMart/initializers"
 	"DzMart/models"
+	"DzMart/services"
+	"fmt"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
 )
 
-func Createcategory(c *gin.Context) {
-	var body models.Category
-	if err := c.ShouldBindJSON(&body); err != nil {
-		var customErr string
-
-		if body.CatName == "" {
-			customErr = "Category Name field is required"
-		}
-
-		if customErr == "" {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		} else {
-			c.JSON(http.StatusBadRequest, gin.H{"error": customErr})
-		}
+func CreateCategory(c *gin.Context) {
+	var category models.Category
+	category.CatName = c.PostForm("CatName")
+	if category.CatName == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "CatName field is required"})
 		return
 	}
-
-	category := models.Category{
-		CatName: body.CatName,
+	img, err := c.FormFile("Category_image")
+	if err != nil {
+		c.String(http.StatusBadRequest, fmt.Sprintf("Error retrieving img: %v", err))
+		return
 	}
+	fileReader, err := img.Open()
+	if err != nil {
+		c.String(http.StatusInternalServerError, fmt.Sprintf("Error opening img: %v", err))
+		return
+	}
+	defer fileReader.Close()
 
-	result := initializers.DB.Create(&category)
-	if result.Error != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": result.Error.Error()})
+	CreateErr := services.CreateCategory(&category, img, c)
+	if CreateErr != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": CreateErr.Error()})
 		return
 	}
 
@@ -41,62 +39,90 @@ func Createcategory(c *gin.Context) {
 	})
 }
 
-func Getcategories(c *gin.Context) {
-	var categories []models.Category
-	initializers.DB.Find(&categories)
-	c.JSON(200, gin.H{
+func GetCategories(c *gin.Context) {
+	categories, err := services.GetAllCategories()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{
 		"categories": categories,
 	})
 }
 
-func Findcategory(c *gin.Context) {
+func GetCategory(c *gin.Context) {
 	CatName := c.Param("name")
-	var category models.Category
-	result := initializers.DB.Where("CatName = ?", CatName).First(&category)
-	if result.Error != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "category not found"})
+	category, err := services.GetCategoryByID(CatName)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
 		return
 	}
-
 	c.JSON(http.StatusOK, gin.H{"category": category})
 }
 
-func Updatecategory(c *gin.Context) {
+func UpdateCategory(c *gin.Context) {
 	CatName := c.Param("name")
-	var category models.Category
-	result := initializers.DB.Where("CatName = ?", CatName).First(&category)
-	if result.Error != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Category not found"})
+	img, err := c.FormFile("Category_image")
+	if err != nil {
+		if err != http.ErrMissingFile {
+			c.String(http.StatusBadRequest, fmt.Sprintf("Error retrieving img: %v", err))
+			return
+		}
+	}
+	NewName := c.PostForm("CatName")
+	if NewName == "" {
+		NewName = CatName
+	}
+	if NewName == "" && img == nil {
 		return
 	}
-	var input dtos.UpdateCategory
-	if err := c.ShouldBindJSON(&input); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
+	if img != nil {
+		fileReader, err := img.Open()
+		if err != nil {
+			c.String(http.StatusInternalServerError, fmt.Sprintf("Error opening img: %v", err))
+			return
+		}
+		defer fileReader.Close()
 	}
 
-	category.CatName = *input.CatName
-
-	updateresult := initializers.DB.Save(&category)
-	if updateresult.Error != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Category not updated"})
+	category, updateresult := services.UpdateCategory(CatName, NewName, img, c)
+	if updateresult != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprint("Category not updated : ", updateresult)})
 		return
 	}
 	c.JSON(http.StatusCreated, gin.H{"category": category})
 }
 
-func Deletecategory(c *gin.Context) {
+func DeleteCategory(c *gin.Context) {
 	CatName := c.Param("name")
-	var category models.Category
-	result := initializers.DB.Where("CatName = ?", CatName).First(&category)
-	if result.Error != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Category not found"})
-		return
-	}
-	deletionresult := initializers.DB.Delete(&category)
-	if deletionresult.Error != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "err deleting category"})
+	err := services.DeleteCategory(CatName, c)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprint("err deleting category : ", err)})
 		return
 	}
 	c.JSON(http.StatusAccepted, gin.H{"message": "category deleted"})
+}
+
+func GetCategoriesImage(c *gin.Context) {
+	categoriesimage, err := services.GetAllImageCategories()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"categoriesimage": categoriesimage,
+	})
+}
+
+func GetCategoryproducts(c *gin.Context) {
+	CatName := c.Param("name")
+	Category, Result := services.GetCategoryProducts(CatName)
+	if Result != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": fmt.Sprint(Result)})
+		return
+	}
+
+	c.JSON(200, gin.H{
+		"products": Category.Items,
+	})
 }

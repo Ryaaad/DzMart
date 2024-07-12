@@ -5,7 +5,7 @@ import (
 	"DzMart/initializers"
 	interfaces "DzMart/interface"
 	"DzMart/models"
-	"DzMart/utils"
+	"DzMart/utils/cloudinary"
 	"fmt"
 	"net/http"
 
@@ -89,18 +89,6 @@ func Findproduct(c *gin.Context) {
 	})
 }
 
-func GetproductCategory(c *gin.Context) {
-	Category := c.Param("name")
-	var product []models.Product
-	result := initializers.DB.Where("category = ?", Category).Find(&product)
-	if result.Error != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "no product with such category"})
-		return
-	}
-	c.JSON(200, gin.H{
-		"product": product,
-	})
-}
 func Updateproduct(c *gin.Context) {
 	Name := c.Param("name")
 	var product models.Product
@@ -157,7 +145,7 @@ func Deleteproduct(c *gin.Context) {
 	}
 
 	for _, img := range imgs {
-		_, err := utils.DestroyImg(c, img.PublicID)
+		_, err := cloudinary.DestroyImg(c, img.PublicID)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
@@ -194,7 +182,6 @@ func AddProductImage(c *gin.Context) {
 	count := initializers.DB.Model(&product).Association("Images").Count()
 	fmt.Println("img count: ", count)
 
-	// Open the uploaded file
 	fileReader, err := file.Open()
 	if err != nil {
 		c.String(http.StatusInternalServerError, fmt.Sprintf("Error opening file: %v", err))
@@ -210,13 +197,12 @@ func AddProductImage(c *gin.Context) {
 	}
 
 	resultCreate := initializers.DB.Create(&Imageproduct)
-	fmt.Println("new img : ", Imageproduct)
 
 	if resultCreate.Error != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": resultCreate.Error.Error()})
 		return
 	}
-	utils.UploadImage(c, file, Imageproduct.PublicID)
+	cloudinary.UploadImage(c, file, Imageproduct.PublicID)
 	c.JSON(http.StatusOK, gin.H{
 		"PublicID": Imageproduct.PublicID,
 	})
@@ -233,8 +219,8 @@ func GetProductImages(c *gin.Context) {
 
 	var imageUrls []string
 	for _, img := range imgs {
-		// Use utils function to get asset info, assuming it returns URLs
-		pic, err := utils.GetAssetInfo(c, img.PublicID)
+		// Use cloudinary function to get asset info, assuming it returns URLs
+		pic, err := cloudinary.GetAssetInfo(c, img.PublicID)
 		fmt.Println("pics", pic)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -243,7 +229,6 @@ func GetProductImages(c *gin.Context) {
 		imageUrls = append(imageUrls, pic.URL) // Assuming pic has URL field
 	}
 
-	// Return the list of image URLs as JSON response
 	c.JSON(http.StatusOK, gin.H{"images": imageUrls})
 }
 
@@ -263,11 +248,10 @@ func DeleteProductImage(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "err deleting img"})
 		return
 	}
-	_, err := utils.DestroyImg(c, PublicId)
+	_, err := cloudinary.DestroyImg(c, PublicId)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "err deleting img"})
 		return
 	}
 	c.JSON(http.StatusAccepted, gin.H{"message": "img deleted"})
-
 }
