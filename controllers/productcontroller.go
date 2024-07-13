@@ -2,10 +2,8 @@ package controllers
 
 import (
 	"DzMart/dtos"
-	"DzMart/initializers"
-	interfaces "DzMart/interface"
 	"DzMart/models"
-	"DzMart/utils/cloudinary"
+	"DzMart/services"
 	"fmt"
 	"net/http"
 
@@ -42,35 +40,28 @@ func Addproduct(c *gin.Context) {
 		}
 		return
 	}
-	var category models.Category
-	if err := initializers.DB.First(&category, "CatName = ?", body.Category).Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "category not found " + err.Error()})
+	_, GetcategoryErr := services.GetCategoryByID(body.Category)
+	if GetcategoryErr != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": GetcategoryErr.Error()})
 		return
 	}
-	product := models.Product{
-		Name:        body.Name,
-		Description: body.Description,
-		Price:       body.Price,
-		Sold:        body.Sold,
-		Rating:      0,
-		Qte:         body.Qte,
-		Category:    body.Category,
-	}
-
-	result := initializers.DB.Create(&product)
-	if result.Error != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": result.Error.Error()})
+	createErr := services.CreateProduct(&body)
+	if createErr != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": createErr.Error()})
 		return
 	}
 
 	c.JSON(http.StatusCreated, gin.H{
-		"product": product,
+		"product": body,
 	})
 }
 
 func Getproducts(c *gin.Context) {
-	var products []models.Product
-	initializers.DB.Preload("Comments").Find(&products)
+	products, err := services.GetAllProducts()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err})
+		return
+	}
 	c.JSON(200, gin.H{
 		"products": products,
 	})
@@ -78,10 +69,9 @@ func Getproducts(c *gin.Context) {
 
 func Findproduct(c *gin.Context) {
 	Name := c.Param("name")
-	var product []models.Product
-	result := initializers.DB.Where("name = ?", Name).First(&product)
-	if result.Error != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "product not found"})
+	product, err := services.GetProductByName(Name)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
 		return
 	}
 	c.JSON(200, gin.H{
@@ -91,10 +81,9 @@ func Findproduct(c *gin.Context) {
 
 func Updateproduct(c *gin.Context) {
 	Name := c.Param("name")
-	var product models.Product
-	result := initializers.DB.Where("name = ?", Name).First(&product)
-	if result.Error != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "product not found"})
+	product, getErr := services.GetProductByName(Name)
+	if getErr != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": getErr.Error()})
 		return
 	}
 	var input dtos.UpdateProductInput
@@ -102,28 +91,9 @@ func Updateproduct(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	if input.Name != nil {
-		product.Name = *input.Name
-	}
-	if input.Category != nil {
-		product.Category = *input.Category
-	}
-
-	if input.Description != nil {
-		product.Description = *input.Description
-	}
-	if input.Price != nil {
-		product.Price = *input.Price
-	}
-	if input.Qte != nil {
-		product.Qte = *input.Qte
-	}
-	if input.Sold != nil {
-		product.Sold = *input.Sold
-	}
-	updateresult := initializers.DB.Save(&product)
-	if updateresult.Error != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "product not updated"})
+	product, updateErr := services.UpdateProduct(input, product)
+	if updateErr != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": updateErr.Error()})
 		return
 	}
 	c.JSON(http.StatusCreated, gin.H{"product": product})
@@ -131,35 +101,14 @@ func Updateproduct(c *gin.Context) {
 
 func Deleteproduct(c *gin.Context) {
 	Name := c.Param("name")
-	var product models.Product
-	result := initializers.DB.Where("name = ?", Name).First(&product)
-	if result.Error != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "product not found"})
+	product, result := services.GetProductByName(Name)
+	if result != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": result.Error()})
 		return
 	}
-	var imgs []models.ProductImage
-	resultFind := initializers.DB.Where("Product = ?", Name).Find(&imgs)
-	if resultFind.Error != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": resultFind.Error.Error()})
-		return
-	}
-
-	for _, img := range imgs {
-		_, err := cloudinary.DestroyImg(c, img.PublicID)
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-			return
-		}
-		deletionResult := initializers.DB.Delete(&img)
-		if deletionResult.Error != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "err deleting img"})
-			return
-		}
-	}
-
-	deletionresult := initializers.DB.Delete(&product)
-	if deletionresult.Error != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "err deleting product"})
+	deletionresult := services.DeleteProduct(product, c)
+	if deletionresult != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": deletionresult.Error()})
 		return
 	}
 	c.JSON(http.StatusAccepted, gin.H{"message": "product deleted"})
@@ -167,91 +116,45 @@ func Deleteproduct(c *gin.Context) {
 
 func AddProductImage(c *gin.Context) {
 	ProductName := c.Param("name")
-	file, err := c.FormFile("file")
+	mainImg, err := c.FormFile("Product_img")
 	if err != nil {
-		c.String(http.StatusBadRequest, fmt.Sprintf("Error retrieving file: %v", err))
+		c.String(http.StatusBadRequest, fmt.Sprintf("Error retrieving product img : %v", err))
 		return
 	}
-	var product []models.Product
-	result := initializers.DB.Where("name = ?", ProductName).First(&product)
-	if result.Error != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "product not found"})
+	var product *models.Product
+	product, GetErr := services.GetProductByName(ProductName)
+	if GetErr != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": GetErr.Error()})
 		return
 	}
-	fmt.Println("product: ", product)
-	count := initializers.DB.Model(&product).Association("Images").Count()
-	fmt.Println("img count: ", count)
 
-	fileReader, err := file.Open()
+	fileReader, err := mainImg.Open()
 	if err != nil {
 		c.String(http.StatusInternalServerError, fmt.Sprintf("Error opening file: %v", err))
 		return
 	}
 	defer fileReader.Close()
-	PublicID := interfaces.BaseImage{
-		PublicID: fmt.Sprint(ProductName, ":", count),
-	}
-	Imageproduct := models.ProductImage{
-		Product:   ProductName,
-		BaseImage: PublicID,
-	}
 
-	resultCreate := initializers.DB.Create(&Imageproduct)
+	product, resultCreate := services.AddProductImage(product, c, mainImg)
 
-	if resultCreate.Error != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": resultCreate.Error.Error()})
+	if resultCreate != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": resultCreate.Error()})
 		return
 	}
-	cloudinary.UploadImage(c, file, Imageproduct.PublicID)
+
 	c.JSON(http.StatusOK, gin.H{
-		"PublicID": Imageproduct.PublicID,
+		"Image Added": product.Images,
 	})
-}
-
-func GetProductImages(c *gin.Context) {
-	Name := c.Param("name")
-	var imgs []models.ProductImage
-	resultFind := initializers.DB.Where("Product = ?", Name).Find(&imgs)
-	if resultFind.Error != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": resultFind.Error.Error()})
-		return
-	}
-
-	var imageUrls []string
-	for _, img := range imgs {
-		// Use cloudinary function to get asset info, assuming it returns URLs
-		pic, err := cloudinary.GetAssetInfo(c, img.PublicID)
-		fmt.Println("pics", pic)
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-			return
-		}
-		imageUrls = append(imageUrls, pic.URL) // Assuming pic has URL field
-	}
-
-	c.JSON(http.StatusOK, gin.H{"images": imageUrls})
 }
 
 func DeleteProductImage(c *gin.Context) {
 	Name := c.Param("name")
 	PublicId := c.Param("id")
-	var img []models.ProductImage
-
-	resultFind := initializers.DB.Where("Product = ?", Name).Where("public_id = ?", PublicId).Find(&img)
-	if resultFind.Error != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": resultFind.Error.Error()})
+	resultFind := services.DeleteProductImage(Name, PublicId, c)
+	if resultFind != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": resultFind.Error()})
 		return
 	}
 
-	deletionresult := initializers.DB.Delete(&img)
-	if deletionresult.Error != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "err deleting img"})
-		return
-	}
-	_, err := cloudinary.DestroyImg(c, PublicId)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "err deleting img"})
-		return
-	}
 	c.JSON(http.StatusAccepted, gin.H{"message": "img deleted"})
 }

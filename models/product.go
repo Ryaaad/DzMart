@@ -2,7 +2,7 @@ package models
 
 type Product struct {
 	IDProduct   uint            `gorm:"primaryKey;autoIncrement" json:"id"`
-	Name        string          `gorm:"not null" json:"Name" binding:"required,min=1,max=30"` // uniqueIndex
+	Name        string          `gorm:"not null;uniqueIndex" json:"Name" binding:"required,min=1,max=30"`
 	Description string          `gorm:"not null" json:"Description" binding:"required,min=1"`
 	Price       int             `json:"Price" binding:"gte=0"`
 	Sold        int             `gorm:"default:0" json:"Sold" binding:"gte=0,lte=100" `
