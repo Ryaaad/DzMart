@@ -21,20 +21,46 @@ func (comment *Comment) AfterCreate(tx *gorm.DB) (err error) {
 	if err := tx.Find(&product, comment.ProductID).Error; err != nil {
 		return errors.New("product not found")
 	}
-	var commentCount int64
-	if err := tx.Model(&Comment{}).Where("product_id = ?", comment.ProductID).Count(&commentCount).Error; err != nil {
+	var comments []Comment
+	if err := tx.Model(&Comment{}).Where("product_id = ?", comment.ProductID).Find(&comments).Error; err != nil {
 		return errors.New("failed to count product comments")
 	}
-
-	if commentCount > 1 {
-		product.Rating = (product.Rating + float64(comment.Review)) / 2
-	} else {
-		product.Rating = float64(comment.Review)
-	}
+	product.Rating = MeanScore(comments)
 
 	if err := tx.Save(&product).Error; err != nil {
 		return errors.New("product not updated")
 	}
 	return nil
+}
+func (comment *Comment) AfterDelete(tx *gorm.DB) (err error) {
+	var product Product
+	if err := tx.Find(&product, comment.ProductID).Error; err != nil {
+		return errors.New("product not found")
+	}
+	var comments []Comment
+	if err := tx.Model(&Comment{}).Where("product_id = ?", comment.ProductID).Find(&comments).Error; err != nil {
+		return errors.New("failed to count product comments")
+	}
+	product.Rating = MeanScore(comments)
 
+	if err := tx.Save(&product).Error; err != nil {
+		return errors.New("product not updated")
+	}
+	return nil
+}
+
+func MeanScore(Reviews []Comment) float64 {
+	if len(Reviews) < 1 {
+		return 0
+	}
+	if len(Reviews) == 1 {
+		return float64(Reviews[0].Review)
+	}
+	var score float64
+	score = 0
+	for _, comment := range Reviews {
+		score = score + float64(comment.Review)
+	}
+	score = score / float64(len(Reviews))
+	return float64(score)
 }
