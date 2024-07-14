@@ -206,3 +206,27 @@ func DeleteAllFavorite(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{"msg": "Removed All product from favorites"})
 }
+
+func GetUserTransactions(c *gin.Context) {
+	userid := c.Param("id")
+	id, convertErr := utils.ToUint(userid)
+	if convertErr != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "unvalid user id"})
+		return
+	}
+
+	user, GetuserErr := services.GetUserById(id)
+	if GetuserErr != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": GetuserErr.Error()})
+		return
+	}
+	transactions, GetErr := services.GetUserTransactions(user)
+	if GetErr != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": GetErr.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"Transactions": transactions,
+	})
+}

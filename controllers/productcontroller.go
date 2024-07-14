@@ -158,3 +158,22 @@ func DeleteProductImage(c *gin.Context) {
 
 	c.JSON(http.StatusAccepted, gin.H{"message": "img deleted"})
 }
+
+func GetProductTransactions(c *gin.Context) {
+	productName := c.Param("name")
+
+	product, GetuserErr := services.GetProductByName(productName)
+	if GetuserErr != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": GetuserErr.Error()})
+		return
+	}
+	transactions, GetErr := services.GetProductTransactions(product)
+	if GetErr != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": GetErr.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"Transactions": transactions,
+	})
+}

@@ -28,6 +28,7 @@ func setupRouter() *gin.Engine {
 	routes.CategoryRoutes(r)
 	routes.ProductRoutes(r)
 	routes.CommentRoutes(r)
+	routes.TransactionRoutes(r)
 	return r
 }
 

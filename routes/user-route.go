@@ -18,5 +18,6 @@ func UserRoutes(r *gin.Engine) {
 		users.POST(":id/Favorites", controllers.AddFavorite)
 		users.DELETE(":id/Favorites", controllers.DeleteAllFavorite)
 		users.DELETE(":id/Favorites/:productid", controllers.DeleteFavorite)
+		users.GET(":id/transactions", controllers.GetUserTransactions)
 	}
 }

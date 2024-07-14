@@ -14,6 +14,7 @@ func ProductRoutes(r *gin.Engine) {
 		products.GET("/:name", controllers.Findproduct)
 		products.PUT("/:name", controllers.Updateproduct)
 		products.DELETE("/:name", controllers.Deleteproduct)
+		products.GET("/:name/transactions", controllers.GetProductTransactions)
 		products.POST("/images/:name", controllers.AddProductImage)
 		products.DELETE("/images/:name/:id", controllers.DeleteProductImage)
 	}
