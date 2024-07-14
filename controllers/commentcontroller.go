@@ -1,14 +1,13 @@
 package controllers
 
 import (
-	"DzMart/initializers"
 	"DzMart/models"
-	"errors"
+	"DzMart/services"
+	"DzMart/utils"
+	"fmt"
 	"net/http"
-	"time"
 
 	"github.com/gin-gonic/gin"
-	"gorm.io/gorm"
 )
 
 func CreateComment(c *gin.Context) {
@@ -33,77 +32,72 @@ func CreateComment(c *gin.Context) {
 		return
 	}
 
-	var user models.User
-	if err := initializers.DB.First(&user, body.UserID).Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
+	_, Usererr := services.GetUserById(body.UserID)
+	if Usererr != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": fmt.Sprint("user ", Usererr.Error())})
 		return
 	}
 
-	var product models.Product
-	if err := initializers.DB.First(&product, body.ProductID).Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Product not found"})
+	_, Producterr := services.GetProductById(body.ProductID)
+	if Producterr != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": fmt.Sprint("product ", Producterr.Error())})
 		return
 	}
 
-	var existingComment models.Comment
-	if err := initializers.DB.Where("user_id = ? AND product_id = ?", body.UserID, body.ProductID).First(&existingComment).Error; err == nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "User has already commented on this product"})
-		return
-	} else if !errors.Is(err, gorm.ErrRecordNotFound) {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to check existing comments"})
-		return
-	}
+	CreateResult := services.CreateComment(body)
 
-	comment := models.Comment{
-		UserID:    body.UserID,
-		ProductID: body.ProductID,
-		Content:   body.Content,
-		Review:    body.Review,
-		CreatedAt: time.Now(),
-	}
-
-	result := initializers.DB.Create(&comment)
-	if result.Error != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": result.Error.Error()})
+	if CreateResult != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": CreateResult.Error()})
 		return
 	}
 
 	c.JSON(http.StatusCreated, gin.H{
-		"comment": comment,
+		"comment": body,
 	})
 }
 
-func Getcomments(c *gin.Context) {
-	var comments []models.Comment
-	initializers.DB.Find(&comments)
+func GetAllComments(c *gin.Context) {
+	comments, err := services.GetAllComments()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
 	c.JSON(200, gin.H{
 		"comments": comments,
 	})
 }
 
-func Findcomment(c *gin.Context) {
+func GetComment(c *gin.Context) {
 	ID := c.Param("id")
-	var comment models.Comment
-	result := initializers.DB.Where("ID = ?", ID).First(&comment)
-	if result.Error != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "comment not found"})
+	id, convertErr := utils.ToUint(ID)
+	if convertErr != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "unvalid comment id"})
+		return
+	}
+	comment, result := services.GetCommentbyId(id)
+	if result != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": result.Error()})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"comment": comment})
+	c.JSON(http.StatusFound, gin.H{"comment": comment})
 }
 
 func Deletecomment(c *gin.Context) {
 	ID := c.Param("id")
-	var Comment models.Comment
-	result := initializers.DB.Where("ID = ?", ID).First(&Comment)
-	if result.Error != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Comment not found"})
+	id, convertErr := utils.ToUint(ID)
+	if convertErr != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "unvalid comment id"})
 		return
 	}
-	deletionresult := initializers.DB.Delete(&Comment)
-	if deletionresult.Error != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "err deleting Comment"})
+	comment, Geterr := services.GetCommentbyId(id)
+	if Geterr != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": Geterr.Error()})
+		return
+	}
+	result := services.Deletecomment(comment)
+	if result != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": result})
 		return
 	}
 	c.JSON(http.StatusAccepted, gin.H{"message": "Comment deleted"})

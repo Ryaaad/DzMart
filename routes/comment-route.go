@@ -9,9 +9,9 @@ import (
 func CommentRoutes(r *gin.Engine) {
 	comments := r.Group("/comments")
 	{
-		comments.GET("/", controllers.Getcomments)
+		comments.GET("/", controllers.GetAllComments)
 		comments.POST("/", controllers.CreateComment)
-		comments.GET("/:id", controllers.Findcomment)
+		comments.GET("/:id", controllers.GetComment)
 		comments.DELETE("/:id", controllers.Deletecomment)
 	}
 }
