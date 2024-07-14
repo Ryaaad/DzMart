@@ -12,7 +12,7 @@ func GetAllUsers() ([]models.User, error) {
 	return Users, result.Error
 }
 
-func GetUserById(id string) (*models.User, error) {
+func GetUserById(id uint) (*models.User, error) {
 	var user *models.User
 	result := initializers.DB.Preload("Fav").Preload("Comments").First(&user, id)
 	if result.Error != nil {

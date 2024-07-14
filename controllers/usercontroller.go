@@ -55,7 +55,12 @@ func GetUsers(c *gin.Context) {
 }
 
 func FindUser(c *gin.Context) {
-	id := c.Param("id")
+	userid := c.Param("id")
+	id, convertErr := utils.ToUint(userid)
+	if convertErr != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "unvalid user id"})
+		return
+	}
 	user, result := services.GetUserById(id)
 	if result != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": result.Error()})
@@ -66,7 +71,12 @@ func FindUser(c *gin.Context) {
 }
 
 func UpdateUser(c *gin.Context) {
-	id := c.Param("id")
+	userid := c.Param("id")
+	id, convertErr := utils.ToUint(userid)
+	if convertErr != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "unvalid user id"})
+		return
+	}
 	user, result := services.GetUserById(id)
 	if result != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": result.Error()})
@@ -87,7 +97,12 @@ func UpdateUser(c *gin.Context) {
 }
 
 func DeleteUser(c *gin.Context) {
-	id := c.Param("id")
+	userid := c.Param("id")
+	id, convertErr := utils.ToUint(userid)
+	if convertErr != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "unvalid user id"})
+		return
+	}
 	user, result := services.GetUserById(id)
 	if result != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": result.Error()})
@@ -103,13 +118,18 @@ func DeleteUser(c *gin.Context) {
 
 func AddFavorite(c *gin.Context) {
 	var favProduct dtos.Favorite
-	userID := c.Param("id")
+	userid := c.Param("id")
+	id, convertErr := utils.ToUint(userid)
+	if convertErr != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "unvalid user id"})
+		return
+	}
 	if err := c.ShouldBindJSON(&favProduct); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	user, Geterr := services.GetUserById(userID)
+	user, Geterr := services.GetUserById(id)
 	if Geterr != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": fmt.Sprint("user ", Geterr.Error())})
 		return
@@ -132,6 +152,11 @@ func AddFavorite(c *gin.Context) {
 
 func DeleteFavorite(c *gin.Context) {
 	userid := c.Param("id")
+	id, convertErr := utils.ToUint(userid)
+	if convertErr != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "unvalid user id"})
+		return
+	}
 	productIDStr := c.Param("productid")
 
 	productID, err := utils.ToUint(productIDStr)
@@ -140,7 +165,7 @@ func DeleteFavorite(c *gin.Context) {
 		return
 	}
 
-	user, geterr := services.GetUserById(userid)
+	user, geterr := services.GetUserById(id)
 	if geterr != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": fmt.Sprint("user ", geterr.Error())})
 		return
@@ -162,8 +187,12 @@ func DeleteFavorite(c *gin.Context) {
 
 func DeleteAllFavorite(c *gin.Context) {
 	userid := c.Param("id")
-
-	user, geterr := services.GetUserById(userid)
+	id, convertErr := utils.ToUint(userid)
+	if convertErr != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "unvalid user id"})
+		return
+	}
+	user, geterr := services.GetUserById(id)
 	if geterr != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": fmt.Sprint("user ", geterr.Error())})
 		return
