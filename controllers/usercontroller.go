@@ -2,23 +2,22 @@ package controllers
 
 import (
 	"DzMart/dtos"
-	"DzMart/initializers"
 	"DzMart/models"
+	"DzMart/services"
+	"DzMart/utils"
 	"fmt"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
 )
 
-func Createuser(c *gin.Context) {
+func CreateUser(c *gin.Context) {
 	var body models.User
 	if err := c.ShouldBindJSON(&body); err != nil {
 		var customErr string
-
 		if body.Email == "" {
 			customErr = "Email field is required"
 		}
-
 		if body.Name == "" {
 			customErr = "Name field is required"
 		}
@@ -33,51 +32,44 @@ func Createuser(c *gin.Context) {
 		return
 	}
 
-	user := models.User{
-		Name:     body.Name,
-		Email:    body.Email,
-		Credit:   0,
-		Sub:      false,
-		Password: body.Password,
-	}
-
-	result := initializers.DB.Create(&user)
-	if result.Error != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": result.Error.Error()})
+	result := services.CreateUser(&body)
+	if result != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": result.Error})
 		return
 	}
 
 	c.JSON(http.StatusCreated, gin.H{
-		"user": user,
+		"user": body,
 	})
 }
 
-func Getusers(c *gin.Context) {
-	var users []models.User
-	initializers.DB.Find(&users)
+func GetUsers(c *gin.Context) {
+	users, err := services.GetAllUsers()
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": err})
+		return
+	}
 	c.JSON(200, gin.H{
 		"users": users,
 	})
 }
 
-func Finduser(c *gin.Context) {
+func FindUser(c *gin.Context) {
 	id := c.Param("id")
-	var user models.User
-	result := initializers.DB.First(&user, id)
-	if result.Error != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
+	user, result := services.GetUserById(id)
+	if result != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": result.Error()})
 		return
 	}
 
 	c.JSON(http.StatusOK, gin.H{"user": user})
 }
 
-func Updateuser(c *gin.Context) {
+func UpdateUser(c *gin.Context) {
 	id := c.Param("id")
-	var user models.User
-	result := initializers.DB.First(&user, id)
-	if result.Error != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
+	user, result := services.GetUserById(id)
+	if result != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": result.Error()})
 		return
 	}
 	var input dtos.UpdateUserInput
@@ -85,35 +77,25 @@ func Updateuser(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	if input.Name != nil {
-		user.Name = *input.Name
-	}
-	if input.Email != nil {
-		user.Email = *input.Email
-	}
-	if input.Password != nil {
-		user.Password = *input.Password
-	}
 
-	updateresult := initializers.DB.Save(&user)
-	if updateresult.Error != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "User not updated"})
+	user, updateresult := services.UpdateUser(input, user)
+	if updateresult != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": updateresult.Error()})
 		return
 	}
 	c.JSON(http.StatusCreated, gin.H{"user": user})
 }
 
-func Deleteuser(c *gin.Context) {
+func DeleteUser(c *gin.Context) {
 	id := c.Param("id")
-	var user models.User
-	result := initializers.DB.First(&user, id)
-	if result.Error != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
+	user, result := services.GetUserById(id)
+	if result != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": result.Error()})
 		return
 	}
-	deletionresult := initializers.DB.Delete(&user)
-	if deletionresult.Error != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "err deleting User"})
+	Deleteresult := services.DeleteUser(user)
+	if Deleteresult != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": Deleteresult.Error()})
 		return
 	}
 	c.JSON(http.StatusAccepted, gin.H{"message": "user deleted"})
@@ -121,64 +103,77 @@ func Deleteuser(c *gin.Context) {
 
 func AddFavorite(c *gin.Context) {
 	var favProduct dtos.Favorite
-	userID := c.Param("id") // Assuming "id" is the user ID parameter in the URL
-	fmt.Println("User ID:", userID)
+	userID := c.Param("id")
 	if err := c.ShouldBindJSON(&favProduct); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	var user models.User
-	if err := initializers.DB.First(&user, userID).Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
+	user, Geterr := services.GetUserById(userID)
+	if Geterr != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": fmt.Sprint("user ", Geterr.Error())})
 		return
 	}
 
-	var product models.Product
-	fmt.Println("Favorite Product ID:", *favProduct.IDProduct)
-	if err := initializers.DB.First(&product, *favProduct.IDProduct).Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Product not found"})
+	product, Geterr := services.GetProductById(*favProduct.IDProduct)
+	if Geterr != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": fmt.Sprint("product ", Geterr.Error())})
 		return
 	}
-	fmt.Println(" Product :", product)
 
-	association := initializers.DB.Model(&user).Association("Fav").Append(&product)
-	fmt.Println(" association :", association)
-
-	c.JSON(http.StatusAccepted, gin.H{"msg": "Product added to favorites"})
-}
-
-func GetFavorites(c *gin.Context) {
-	id := c.Param("id")
-
-	var user models.User
-	if err := initializers.DB.Preload("Fav").Find(&user, id).Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
+	user, Errassociation := services.AddFavorite(user, product)
+	if Errassociation != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": Errassociation.Error()})
 		return
 	}
-	c.JSON(200, gin.H{
-		"Favorites": user.Fav,
-	})
+
+	c.JSON(http.StatusAccepted, gin.H{"user": user})
 }
 
 func DeleteFavorite(c *gin.Context) {
 	userid := c.Param("id")
-	productid := c.Param("productid")
+	productIDStr := c.Param("productid")
 
-	var user models.User
-	if err := initializers.DB.Find(&user, userid).Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
+	productID, err := utils.ToUint(productIDStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid product ID"})
 		return
 	}
 
-	var product models.User
-
-	if err := initializers.DB.Find(&product, productid).Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "product not found"})
+	user, geterr := services.GetUserById(userid)
+	if geterr != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": fmt.Sprint("user ", geterr.Error())})
 		return
 	}
-	association := initializers.DB.Model(&user).Association("Fav").Delete(product)
-	fmt.Println(" association :", association)
+	product, geterr := services.GetProductById(productID)
+	if geterr != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": fmt.Sprint("product ", geterr.Error())})
+		return
+	}
+
+	DeleteErr := services.DeleteFavorite(*user, *product)
+	if DeleteErr != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": DeleteErr.Error()})
+		return
+	}
 
 	c.JSON(http.StatusOK, gin.H{"msg": "Product removed from favorites"})
+}
+
+func DeleteAllFavorite(c *gin.Context) {
+	userid := c.Param("id")
+
+	user, geterr := services.GetUserById(userid)
+	if geterr != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": fmt.Sprint("user ", geterr.Error())})
+		return
+	}
+
+	DeleteErr := services.DeleteAllFavorite(*user)
+	if DeleteErr != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": DeleteErr.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"msg": "Removed All product from favorites"})
 }
