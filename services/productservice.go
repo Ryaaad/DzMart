@@ -155,3 +155,12 @@ func DeleteProductImage(Name string, PublicId string, c context.Context) error {
 	}
 	return nil
 }
+
+func GetProductTransactions(product *models.Product) ([]models.Transaction, error) {
+	var transactions []models.Transaction
+	result := initializers.DB.Model(product).Association("Transactions").Find(&transactions)
+	if result != nil {
+		return nil, result
+	}
+	return transactions, nil
+}

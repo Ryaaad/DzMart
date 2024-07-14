@@ -19,7 +19,6 @@ func GetUserById(id uint) (*models.User, error) {
 		return nil, result.Error
 	}
 	return user, nil
-
 }
 
 func CreateUser(body *models.User) error {
@@ -96,4 +95,13 @@ func DeleteAllFavorite(user models.User) error {
 	}
 
 	return nil
+}
+
+func GetUserTransactions(user *models.User) ([]models.Transaction, error) {
+	var transactions []models.Transaction
+	result := initializers.DB.Model(user).Association("Transactions").Find(&transactions)
+	if result != nil {
+		return nil, result
+	}
+	return transactions, nil
 }

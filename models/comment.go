@@ -25,7 +25,7 @@ func (comment *Comment) AfterCreate(tx *gorm.DB) (err error) {
 	if err := tx.Model(&Comment{}).Where("product_id = ?", comment.ProductID).Find(&comments).Error; err != nil {
 		return errors.New("failed to count product comments")
 	}
-	product.Rating = MeanScore(comments)
+	product.Rating = meanScore(comments)
 
 	if err := tx.Save(&product).Error; err != nil {
 		return errors.New("product not updated")
@@ -41,7 +41,7 @@ func (comment *Comment) AfterDelete(tx *gorm.DB) (err error) {
 	if err := tx.Model(&Comment{}).Where("product_id = ?", comment.ProductID).Find(&comments).Error; err != nil {
 		return errors.New("failed to count product comments")
 	}
-	product.Rating = MeanScore(comments)
+	product.Rating = meanScore(comments)
 
 	if err := tx.Save(&product).Error; err != nil {
 		return errors.New("product not updated")
@@ -49,7 +49,7 @@ func (comment *Comment) AfterDelete(tx *gorm.DB) (err error) {
 	return nil
 }
 
-func MeanScore(Reviews []Comment) float64 {
+func meanScore(Reviews []Comment) float64 {
 	if len(Reviews) < 1 {
 		return 0
 	}
