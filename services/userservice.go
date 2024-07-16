@@ -4,6 +4,8 @@ import (
 	"DzMart/dtos"
 	"DzMart/initializers"
 	"DzMart/models"
+
+	"golang.org/x/crypto/bcrypt"
 )
 
 func GetAllUsers() ([]models.User, error) {
@@ -21,21 +23,39 @@ func GetUserById(id uint) (*models.User, error) {
 	return user, nil
 }
 
-func CreateUser(body *models.User) error {
+func CreateUser(body *models.User) (*models.User, error) {
+	hashedpswd, err := bcrypt.GenerateFromPassword([]byte(body.Password), bcrypt.DefaultCost)
+	if err != nil {
+		return nil, err
+	}
 	user := models.User{
 		Name:     body.Name,
 		Email:    body.Email,
 		Credit:   0,
 		Sub:      false,
-		Password: body.Password,
+		Password: string(hashedpswd),
 	}
 
 	result := initializers.DB.Create(&user)
 	if result.Error != nil {
-		return result.Error
+		return nil, result.Error
 	}
 
-	return nil
+	return &user, nil
+}
+
+func Login(body dtos.LoginInput) (*models.User, error) {
+	var user models.User
+	err := initializers.DB.Model(&models.User{}).Where("Email=?", *body.Email).First(&user)
+	if err.Error != nil {
+		return nil, err.Error
+	}
+	Pswderr := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(*body.Password))
+	if Pswderr != nil {
+		return nil, Pswderr
+	}
+
+	return &user, nil
 }
 
 func UpdateUser(input dtos.UpdateUserInput, user *models.User) (*models.User, error) {
@@ -45,9 +65,9 @@ func UpdateUser(input dtos.UpdateUserInput, user *models.User) (*models.User, er
 	if input.Email != nil {
 		user.Email = *input.Email
 	}
-	if input.Password != nil {
-		user.Password = *input.Password
-	}
+	// if input.Password != nil {
+	// 	user.Password = *input.Password
+	// }
 
 	SaveErr := initializers.DB.Model(&models.User{}).Where("id = ?", user.ID).Updates(map[string]interface{}{
 		"Name":     user.Name,
