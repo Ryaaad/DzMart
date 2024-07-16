@@ -32,14 +32,64 @@ func CreateUser(c *gin.Context) {
 		return
 	}
 
-	result := services.CreateUser(&body)
+	user, result := services.CreateUser(&body)
 	if result != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": result.Error})
+		c.JSON(http.StatusBadRequest, gin.H{"error": result.Error})
 		return
 	}
 
+	// create token & sign it
+	tokenString, err := utils.CreateAndSignJwt(user.ID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintln("JWT creation failed", err.Error())})
+	}
+
+	// 2. send the tooken in cookie
+	utils.SetCookie(c, tokenString)
 	c.JSON(http.StatusCreated, gin.H{
-		"user": body,
+		"user": user,
+	})
+}
+
+func Signout(c *gin.Context) {
+	// Add the JWT token to the block list or change expiry time of the cookie.
+	c.SetCookie("Auth", "deleted", 0, "", "", false, true)
+}
+
+func Login(c *gin.Context) {
+	var body dtos.LoginInput
+	if err := c.ShouldBindJSON(&body); err != nil {
+		var customErr string
+		if *body.Email == "" {
+			customErr = "Email field is missing"
+		}
+		if *body.Password == "" {
+			customErr = "Password field is missing"
+		}
+		if customErr == "" {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		} else {
+			c.JSON(http.StatusBadRequest, gin.H{"error": customErr})
+		}
+		return
+	}
+
+	user, result := services.Login(body)
+	if result != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": result.Error})
+		return
+	}
+	// create token & sign it
+	tokenString, err := utils.CreateAndSignJwt(user.ID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "JWT creation failed"})
+	}
+
+	// 2. send the tooken in cookie
+	utils.SetCookie(c, tokenString)
+
+	c.JSON(http.StatusOK, gin.H{
+		"user": user,
 	})
 }
 

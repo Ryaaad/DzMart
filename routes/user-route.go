@@ -9,6 +9,8 @@ import (
 func UserRoutes(r *gin.Engine) {
 	users := r.Group("/users")
 	{
+		users.POST("/login", controllers.Login)
+		users.DELETE("/signout", controllers.Signout)
 		users.GET("/", controllers.GetUsers)
 		users.POST("/", controllers.CreateUser)
 		users.GET("/:id", controllers.FindUser)
